@@ -8,9 +8,8 @@ public class Enemy : MonoBehaviour
     public float speed = 2.0f;          // Скорость движения NPC
     public float distance = 5.0f;
     private Vector3 startPosition;      // Расстояние, на которое NPC будет двигаться влево и вправо
-    private Health health;              // Подкласс для здоровья NPC
 
-
+    private EnemyHealth health;         // Объект здоровья врага
     // Начальная позиция NPC
     private bool movingRight = true;
 
@@ -18,7 +17,7 @@ public class Enemy : MonoBehaviour
     void Start()
     {
         startPosition = transform.position;
-        health = new Health(100);  // Начальное здоровье NPC
+        health = new EnemyHealth(100, this);  // Начальное здоровье NPC
 
     }
 
@@ -56,43 +55,57 @@ public class Enemy : MonoBehaviour
         }
     }
 
-    // Метод для нанесения урона NPC
     public void TakeDamage(int damage)
     {
-        health.DecreaseHealth(damage);  // Уменьшаем здоровье через метод в подклассе
-        if (health.CurrentHP <= 0)
-        {
-            Die();  // Если здоровье NPC 0 или меньше, вызываем метод смерти
-        }
+        health.TakeDamage(damage);
     }
 
-    // Метод для смерти NPC
-    private void Die()
+        // Метод для смерти NPC
+    public void Die()
     {
-        Destroy(gameObject);  // Уничтожаем объект NPC
+        Destroy(gameObject);
+    }
+}
+
+        // Базовый класс характеристик врага (здоровье)
+    public class EnemyStats
+    {
+    protected int hp;
+
+    public EnemyStats(int startHp)
+    {
+        hp = startHp;
     }
 
-    public class Health
+    public virtual void TakeDamage(int damage)
     {
-        public int MaxHP { get; private set; }   // Максимальное здоровье
-        public int CurrentHP { get; private set; }   // Текущее здоровье
+        hp -= damage;
+    }
 
-        // Конструктор для инициализации максимального здоровья
-        public Health(int maxHP)
-        {
-            MaxHP = maxHP;
-            CurrentHP = maxHP;
-        }
+    public bool IsDead()
+    {
+        return hp <= 0;
+    }
+    }
 
-        // Метод для уменьшения здоровья
-        public void DecreaseHealth(int damage)
+    // Класс здоровья, унаследованный от EnemyStats
+    public class EnemyHealth : EnemyStats
+{ 
+        private Enemy enemy;
+
+    public EnemyHealth(int startHp, Enemy enemyObj) : base(startHp)
+    {
+        enemy = enemyObj;
+    }
+
+    public override void TakeDamage(int damage)
+    {
+        base.TakeDamage(damage);
+        if (IsDead())
         {
-            CurrentHP -= damage;
-            if (CurrentHP < 0)
-            {
-                CurrentHP = 0;  // Здоровье не может быть меньше нуля
-            }
+            enemy.Die();
         }
     }
 }
+
    

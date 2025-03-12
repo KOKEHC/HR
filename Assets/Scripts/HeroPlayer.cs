@@ -26,7 +26,7 @@ public class HeroPlayer : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         sprite = GetComponentInChildren<SpriteRenderer>();
         anim = GetComponent<Animator>();
-        health = new Health(3, sl, this);
+        health = new Health(3, sl, this, panel);
         
     }
 
@@ -96,36 +96,110 @@ public class HeroPlayer : MonoBehaviour
         }
     }
 
-    public class Health             // подкласс здоровья
+    public void Die()
     {
-        private int hp = 3;
-        private Slider slider;
-        private HeroPlayer hero;
-        private GameObject panel;          
+        die = true;
+        panel.SetActive(true); // Включаем панель проигрыша
+        Destroy(gameObject);
+        
+    }
 
-        public Health(int startHp, Slider healthSlider, HeroPlayer player)
+    // Базовый класс для Статов
+    public class CharacterStats
+    {
+        protected int hp;
+        protected int maxHp;
+
+        public CharacterStats(int startHp)
         {
             hp = startHp;
-            slider = healthSlider;
-            hero = player;
-            
+            maxHp = startHp;
         }
 
-        public void TakeDamage(int damage)   // метод получения урона
+        public virtual void Heal(int amount) // метод для лечения
+        {
+            hp += amount;
+            if (hp > maxHp)
+                hp = maxHp;
+        }
+
+        public virtual void TakeDamage(int damage)
         {
             hp -= damage;
-            slider.value = hp;
-            if (hp <= 0) {
-                hero.Die();
-                panel.SetActive(true);
-            }
+        }
+        public bool IsDead()
+        {
+            return hp <= 0;
         }
     }
 
-    private void Die()                     // метод смерти
+    // Класс Health наследуется от CharacterStats
+    public class Health : CharacterStats
     {
-        Destroy(gameObject);                
-        SceneManager.LoadScene(0);
+        private Slider slider;
+        private HeroPlayer hero;
+        private GameObject panel; 
+
+        public Health(int startHp, Slider healthSlider, HeroPlayer player, GameObject panelObj) : base(startHp)
+        {
+            slider = healthSlider;
+            hero = player;
+            panel = panelObj;
+            slider.maxValue = maxHp;
+            slider.value = startHp;
+        }
+
+        public override void TakeDamage(int damage)
+        {
+            base.TakeDamage(damage);
+            slider.value = hp;
+
+            if (IsDead()) // Если здоровье закончилось
+            {
+                panel.SetActive(true); // Показываем панель проигрыша
+                hero.Die(); // Герой умирает
+            }
+        }
+
+        public override void Heal(int amount) // Метод лечения
+        {
+            base.Heal(amount);
+            slider.value = hp; // Обновляем значение на слайдере
+        }
+    }
+
+    // Класс Armor (броня, которая поглощает урон)
+    public class Armor : CharacterStats
+    {
+        private int armorValue; // Количество брони
+        private Health health;  // Ссылка на здоровье
+
+        public Armor(int startHp, int armor, Health playerHealth) : base(startHp)
+        {
+            armorValue = armor;
+            health = playerHealth;
+        }
+
+        public override void TakeDamage(int damage)
+        {
+            int damageAfterArmor = damage - armorValue; // Броня уменьшает урон
+            if (damageAfterArmor < 0)
+                damageAfterArmor = 0; // Урон не может быть отрицательным
+
+            base.TakeDamage(damageAfterArmor); // Наносим урон броне
+
+            if (IsDead()) // Если броня разрушена, урон идет в здоровье
+            {
+                health.TakeDamage(damageAfterArmor);
+            }
+        }
+
+        public void RepairArmor(int amount)
+        {
+            hp += amount;
+            if (hp > maxHp)
+                hp = maxHp;
+        }
     }
 }
 
